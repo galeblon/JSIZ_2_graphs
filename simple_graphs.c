@@ -2,39 +2,110 @@
 #include "stddef.h"
 #include "structmember.h"
 
-typedef struct {
+typedef struct
+{
     PyObject_HEAD
-    /* fields */
     uint64_t vertices;
-
+    uint64_t edges_matrix[64];
 } AdjacencyMatrixGraphObject;
 
 // Graph methods
-static PyObject* AdjacencyMatrixGraph_method_test(AdjacencyMatrixGraphObject* self, PyObject *Py_UNUSED(ignored)) {
-    return PyLong_FromLong(300);
-};
-
-static PyObject* AdjacencyMatrixGraph_method_test2(AdjacencyMatrixGraphObject* self, PyObject* o) {
+static PyObject* AdjacencyMatrixGraph_method_test2(AdjacencyMatrixGraphObject* self, PyObject* o)
+{
     return PyLong_FromLong(620);
 };
 
-static PyObject* AdjacencyMatrixGraph_method_test3(AdjacencyMatrixGraphObject* self, PyObject* o) {
+static PyObject* AdjacencyMatrixGraph_method_test3(AdjacencyMatrixGraphObject* self, PyObject* o)
+{
     return Py_BuildValue("");
 };
 
+static PyObject* AdjacencyMatrixGraph_number_of_vertices(AdjacencyMatrixGraphObject* self, PyObject *Py_UNUSED(ignored))
+{
+    uint64_t v_temp = self->vertices;
+    uint count = 0;
+    for(size_t vi=0; vi<64; vi++) {
+        count += (v_temp)&0x01;
+        v_temp >>= 1;
+    }
+
+    return PyLong_FromLong(count);
+}
+
+static PyObject* AdjacencyMatrixGraph_vertices(AdjacencyMatrixGraphObject* self, PyObject *Py_UNUSED(ignored))
+{
+    uint64_t v_temp = self->vertices;
+    PyObject* v_set = PySet_New(NULL);
+    for(size_t vi=0; vi<64; vi++) {
+        if(v_temp&0x01)
+        {
+            PySet_Add(v_set, PyLong_FromLong(vi));
+        }
+        v_temp >>= 1;
+    }
+
+    return v_set;
+}
+
+static PyObject* AdjacencyMatrixGraph_vertex_degree(AdjacencyMatrixGraphObject* self, PyObject* o)
+{
+    if(PyLong_Check(o)) {
+        uint64_t e_temp = self->edges_matrix[PyLong_AsLong(o)%64];
+        uint degree = 0;
+        for(size_t ei=0; ei<64; ei++) {
+            degree += (e_temp)&0x01;
+            e_temp >>= 1;
+        }
+        return PyLong_FromLong(degree);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected integer number as argument");
+        return NULL;
+    }
+}
+
+static PyObject* AdjacencyMatrixGraph_vertex_neighbors(AdjacencyMatrixGraphObject* self, PyObject* o)
+{
+    if(PyLong_Check(o)) {
+        uint64_t e_temp = self->edges_matrix[PyLong_AsLong(o)%64];
+        PyObject* n_set = PySet_New(NULL);
+        for(size_t ni=0; ni<64; ni++) {
+            if(e_temp&0x01)
+            {
+                PySet_Add(n_set, PyLong_FromLong(ni));
+            }
+            e_temp >>= 1;
+        }
+        return n_set;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected integer number as argument");
+        return NULL;
+    }
+}
+
+static PyObject* AdjacencyMatrixGraph_add_vertex(AdjacencyMatrixGraphObject* self, PyObject* o)
+{
+    if(PyLong_Check(o)) {
+        self->vertices |= ((uint64_t) 1) << PyLong_AsLong(o);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "Expected integer number as argument");
+        return NULL;
+    }
+    return Py_BuildValue("");
+};
 // Graph methods end
 
-static PyMemberDef AdjacencyMatrixGraph_members[] = {
+static PyMemberDef AdjacencyMatrixGraph_members[] ={
     {NULL} // Sentinel
 };
 
 static PyMethodDef AdjacencyMatrixGraph_methods[] = {
     // Base operations
-    {"number_of_vertices", (PyCFunction) AdjacencyMatrixGraph_method_test, METH_NOARGS, "Returns the number of vertices of current graph."},
-    {"vertices", (PyCFunction) AdjacencyMatrixGraph_method_test, METH_NOARGS, "Returns the vertices of current graph as a 64-bit number."},
-    {"vertex_degree", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_O, "Returns the degree of given vertex."},
-    {"vertex_neighbors", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_O, "Returns the neighbors of given vertex."},
-    {"add_vertex", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_O, "Adds new vertex to the graph."},
+    {"number_of_vertices", (PyCFunction) AdjacencyMatrixGraph_number_of_vertices, METH_NOARGS, "Returns the number of vertices of current graph."},
+    {"vertices", (PyCFunction) AdjacencyMatrixGraph_vertices, METH_NOARGS, "Returns the vertices of current graph as a 64-bit number."},
+    {"vertex_degree", (PyCFunction) AdjacencyMatrixGraph_vertex_degree, METH_O, "Returns the degree of given vertex."},
+    {"vertex_neighbors", (PyCFunction) AdjacencyMatrixGraph_vertex_neighbors, METH_O, "Returns the neighbors of given vertex."},
+    {"add_vertex", (PyCFunction) AdjacencyMatrixGraph_add_vertex, METH_O, "Adds new vertex to the graph."},
+    //TODO WIP methods
     {"delete_vertex", (PyCFunction) AdjacencyMatrixGraph_method_test3, METH_O, "Removes existing vertex from the graph."},
     {"number_of_edges", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_NOARGS, "Returns the number of edges in graph."},
     {"edges", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_NOARGS, "Returns the edges of the graph."},
@@ -68,10 +139,6 @@ static PyModuleDef simple_graphs_module = {
     .m_name = "simple_graphs",
     .m_doc = "Module with simple graph implementation",
     .m_size = -1
-};
-
-static PyMethodDef simple_graphs_methods[] = {
-    {NULL} // Sentinel
 };
 // Module definitions end
 

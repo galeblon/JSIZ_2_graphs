@@ -1,0 +1,9 @@
+import simple_graphs as sg;
+g = sg.AdjacencyMatrixGraph();
+g.add_vertex(1);
+g.add_vertex(2);
+g.vertices();
+g.number_of_vertices();
+g.add_vertex(40);
+g.vertices();
+g.number_of_vertices();
