@@ -102,7 +102,7 @@ static PyObject* AdjacencyMatrix_delete_vertex(AdjacencyMatrixObject* self, PyOb
     if(PyLong_Check(o)) {
         self->vertices &= ~(((uint64_t) 1) << v);
         self->edges_matrix[v] = 0;
-        for(size_t vi=0; vi<v; vi++)
+        for(size_t vi=0; vi<MAX_VERTICES; vi++)
             self->edges_matrix[vi] &= ~((uint64_t)1 << v);
     } else {
         PyErr_SetString(PyExc_TypeError, "Expected integer number as argument");
