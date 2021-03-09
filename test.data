@@ -1,5 +1,9 @@
 import simple_graphs as sg;
-g = sg.AdjacencyMatrixGraph();
+g = sg.AdjacencyMatrix("I?qaeX{n?");
+g.vertices();
+g.number_of_vertices();
+
+
 g.add_vertex(1);
 g.add_vertex(2);
 g.vertices();

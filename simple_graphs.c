@@ -2,29 +2,31 @@
 #include "stddef.h"
 #include "structmember.h"
 
+#define MAX_VERTICES 64
+
 typedef struct
 {
     PyObject_HEAD
     uint64_t vertices;
-    uint64_t edges_matrix[64];
-} AdjacencyMatrixGraphObject;
+    uint64_t edges_matrix[MAX_VERTICES];
+} AdjacencyMatrixObject;
 
 // Graph methods
-static PyObject* AdjacencyMatrixGraph_method_test2(AdjacencyMatrixGraphObject* self, PyObject* o)
+static PyObject* AdjacencyMatrix_method_test2(AdjacencyMatrixObject* self, PyObject* o)
 {
     return PyLong_FromLong(620);
 };
 
-static PyObject* AdjacencyMatrixGraph_method_test3(AdjacencyMatrixGraphObject* self, PyObject* o)
+static PyObject* AdjacencyMatrix_method_test3(AdjacencyMatrixObject* self, PyObject* o)
 {
     return Py_BuildValue("");
 };
 
-static PyObject* AdjacencyMatrixGraph_number_of_vertices(AdjacencyMatrixGraphObject* self, PyObject *Py_UNUSED(ignored))
+static PyObject* AdjacencyMatrix_number_of_vertices(AdjacencyMatrixObject* self, PyObject *Py_UNUSED(ignored))
 {
     uint64_t v_temp = self->vertices;
     uint count = 0;
-    for(size_t vi=0; vi<64; vi++) {
+    for(size_t vi=0; vi<MAX_VERTICES; vi++) {
         count += (v_temp)&0x01;
         v_temp >>= 1;
     }
@@ -32,11 +34,11 @@ static PyObject* AdjacencyMatrixGraph_number_of_vertices(AdjacencyMatrixGraphObj
     return PyLong_FromLong(count);
 }
 
-static PyObject* AdjacencyMatrixGraph_vertices(AdjacencyMatrixGraphObject* self, PyObject *Py_UNUSED(ignored))
+static PyObject* AdjacencyMatrix_vertices(AdjacencyMatrixObject* self, PyObject *Py_UNUSED(ignored))
 {
     uint64_t v_temp = self->vertices;
     PyObject* v_set = PySet_New(NULL);
-    for(size_t vi=0; vi<64; vi++) {
+    for(size_t vi=0; vi<MAX_VERTICES; vi++) {
         if(v_temp&0x01)
         {
             PySet_Add(v_set, PyLong_FromLong(vi));
@@ -47,12 +49,12 @@ static PyObject* AdjacencyMatrixGraph_vertices(AdjacencyMatrixGraphObject* self,
     return v_set;
 }
 
-static PyObject* AdjacencyMatrixGraph_vertex_degree(AdjacencyMatrixGraphObject* self, PyObject* o)
+static PyObject* AdjacencyMatrix_vertex_degree(AdjacencyMatrixObject* self, PyObject* o)
 {
     if(PyLong_Check(o)) {
         uint64_t e_temp = self->edges_matrix[PyLong_AsLong(o)%64];
         uint degree = 0;
-        for(size_t ei=0; ei<64; ei++) {
+        for(size_t ei=0; ei<MAX_VERTICES; ei++) {
             degree += (e_temp)&0x01;
             e_temp >>= 1;
         }
@@ -63,12 +65,12 @@ static PyObject* AdjacencyMatrixGraph_vertex_degree(AdjacencyMatrixGraphObject* 
     }
 }
 
-static PyObject* AdjacencyMatrixGraph_vertex_neighbors(AdjacencyMatrixGraphObject* self, PyObject* o)
+static PyObject* AdjacencyMatrix_vertex_neighbors(AdjacencyMatrixObject* self, PyObject* o)
 {
     if(PyLong_Check(o)) {
         uint64_t e_temp = self->edges_matrix[PyLong_AsLong(o)%64];
         PyObject* n_set = PySet_New(NULL);
-        for(size_t ni=0; ni<64; ni++) {
+        for(size_t ni=0; ni<MAX_VERTICES; ni++) {
             if(e_temp&0x01)
             {
                 PySet_Add(n_set, PyLong_FromLong(ni));
@@ -82,7 +84,7 @@ static PyObject* AdjacencyMatrixGraph_vertex_neighbors(AdjacencyMatrixGraphObjec
     }
 }
 
-static PyObject* AdjacencyMatrixGraph_add_vertex(AdjacencyMatrixGraphObject* self, PyObject* o)
+static PyObject* AdjacencyMatrix_add_vertex(AdjacencyMatrixObject* self, PyObject* o)
 {
     if(PyLong_Check(o)) {
         self->vertices |= ((uint64_t) 1) << PyLong_AsLong(o);
@@ -94,41 +96,78 @@ static PyObject* AdjacencyMatrixGraph_add_vertex(AdjacencyMatrixGraphObject* sel
 };
 // Graph methods end
 
-static PyMemberDef AdjacencyMatrixGraph_members[] ={
+static PyMemberDef AdjacencyMatrix_members[] ={
     {NULL} // Sentinel
 };
 
-static PyMethodDef AdjacencyMatrixGraph_methods[] = {
+static PyMethodDef AdjacencyMatrix_methods[] = {
     // Base operations
-    {"number_of_vertices", (PyCFunction) AdjacencyMatrixGraph_number_of_vertices, METH_NOARGS, "Returns the number of vertices of current graph."},
-    {"vertices", (PyCFunction) AdjacencyMatrixGraph_vertices, METH_NOARGS, "Returns the vertices of current graph as a 64-bit number."},
-    {"vertex_degree", (PyCFunction) AdjacencyMatrixGraph_vertex_degree, METH_O, "Returns the degree of given vertex."},
-    {"vertex_neighbors", (PyCFunction) AdjacencyMatrixGraph_vertex_neighbors, METH_O, "Returns the neighbors of given vertex."},
-    {"add_vertex", (PyCFunction) AdjacencyMatrixGraph_add_vertex, METH_O, "Adds new vertex to the graph."},
+    {"number_of_vertices", (PyCFunction) AdjacencyMatrix_number_of_vertices, METH_NOARGS, "Returns the number of vertices of current graph."},
+    {"vertices", (PyCFunction) AdjacencyMatrix_vertices, METH_NOARGS, "Returns the vertices of current graph as a 64-bit number."},
+    {"vertex_degree", (PyCFunction) AdjacencyMatrix_vertex_degree, METH_O, "Returns the degree of given vertex."},
+    {"vertex_neighbors", (PyCFunction) AdjacencyMatrix_vertex_neighbors, METH_O, "Returns the neighbors of given vertex."},
+    {"add_vertex", (PyCFunction) AdjacencyMatrix_add_vertex, METH_O, "Adds new vertex to the graph."},
     //TODO WIP methods
-    {"delete_vertex", (PyCFunction) AdjacencyMatrixGraph_method_test3, METH_O, "Removes existing vertex from the graph."},
-    {"number_of_edges", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_NOARGS, "Returns the number of edges in graph."},
-    {"edges", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_NOARGS, "Returns the edges of the graph."},
-    {"is_edge", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_VARARGS, "Returns whether the vertices form an edge in the graph."},
-    {"add_edge", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_VARARGS, "Adds new edge between specified vertices in the graph."},
-    {"delete_edge", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_VARARGS, "Removed edge between specified vertices in the graph."},
+    {"delete_vertex", (PyCFunction) AdjacencyMatrix_method_test3, METH_O, "Removes existing vertex from the graph."},
+    {"number_of_edges", (PyCFunction) AdjacencyMatrix_method_test2, METH_NOARGS, "Returns the number of edges in graph."},
+    {"edges", (PyCFunction) AdjacencyMatrix_method_test2, METH_NOARGS, "Returns the edges of the graph."},
+    {"is_edge", (PyCFunction) AdjacencyMatrix_method_test2, METH_VARARGS, "Returns whether the vertices form an edge in the graph."},
+    {"add_edge", (PyCFunction) AdjacencyMatrix_method_test2, METH_VARARGS, "Adds new edge between specified vertices in the graph."},
+    {"delete_edge", (PyCFunction) AdjacencyMatrix_method_test2, METH_VARARGS, "Removed edge between specified vertices in the graph."},
     // Additional operation
-    {"vertices_of_degree", (PyCFunction) AdjacencyMatrixGraph_method_test2, METH_O, "Returns vertices of given degree."},
+    {"vertices_of_degree", (PyCFunction) AdjacencyMatrix_method_test2, METH_O, "Returns vertices of given degree."},
     {NULL} // Sentinel
 };
 
-static PyTypeObject simple_graphs_AdjacencyMatrixGraphType = {
+static PyObject* AdjacencyMatrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    AdjacencyMatrixObject* self;
+    self = (AdjacencyMatrixObject*) type->tp_alloc(type, 0);
+    if(self != NULL) {
+        self->vertices = 0;
+        for(size_t v = 0; v<MAX_VERTICES; v++)
+            self->edges_matrix[v] = 0;
+    }
+    return (PyObject*) self;
+}
+
+static int AdjacencyMatrix_init(AdjacencyMatrixObject *self, PyObject *args, PyObject *kwds)
+{
+    char* str = NULL;
+    if(!PyArg_ParseTuple(args, "s", &str))
+    {
+        PyErr_SetString(PyExc_TypeError, "Couldn't unpack argument");
+        return -1;
+    }
+    if(strlen(str) == 0) {
+        PyErr_SetString(PyExc_TypeError, "g6 sequence cannot be empty");
+        return -1;
+    }
+
+    char* g6_sequence = str;
+    uint64_t num_of_vertices = g6_sequence[0] - 63;
+    uint64_t index = 1;
+    while(num_of_vertices > 0) {
+        num_of_vertices--;
+        self->vertices |= index;
+        index<<=1;
+    }
+    //TODO add edges
+    return 0;
+}
+
+static PyTypeObject simple_graphs_AdjacencyMatrixType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "simple_graphs.AdjacencyMatrixGraph",
-    .tp_doc = "AdjacencyMatrixGraph objects",
-    .tp_basicsize = sizeof(AdjacencyMatrixGraphObject),
+    .tp_name = "simple_graphs.AdjacencyMatrix",
+    .tp_doc = "AdjacencyMatrix objects",
+    .tp_basicsize = sizeof(AdjacencyMatrixObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    //TODO .tp_new = ?
-    //TODO .tp_init = ?
+    .tp_new = AdjacencyMatrix_new,
+    .tp_init = (initproc)AdjacencyMatrix_init,
     //TODO .tp_dealloc = ?
-    .tp_members = AdjacencyMatrixGraph_members,
-    .tp_methods = AdjacencyMatrixGraph_methods,
+    .tp_members = AdjacencyMatrix_members,
+    .tp_methods = AdjacencyMatrix_methods,
     //TODO .tp_richcompare = ? for EQ and NE
 };
 
@@ -147,18 +186,17 @@ PyMODINIT_FUNC
 PyInit_simple_graphs(void)
 {
     PyObject* m;
-    simple_graphs_AdjacencyMatrixGraphType.tp_new = PyType_GenericNew;
 
-    if(PyType_Ready(&simple_graphs_AdjacencyMatrixGraphType) < 0)
+    if(PyType_Ready(&simple_graphs_AdjacencyMatrixType) < 0)
         return NULL;
 
     m = PyModule_Create(&simple_graphs_module);
     if(m == NULL)
         return NULL;
 
-    Py_INCREF(&simple_graphs_AdjacencyMatrixGraphType);
-    if(PyModule_AddObject(m, "AdjacencyMatrixGraph", (PyObject*)&simple_graphs_AdjacencyMatrixGraphType) < 0) {
-        Py_DECREF(&simple_graphs_AdjacencyMatrixGraphType);
+    Py_INCREF(&simple_graphs_AdjacencyMatrixType);
+    if(PyModule_AddObject(m, "AdjacencyMatrix", (PyObject*)&simple_graphs_AdjacencyMatrixType) < 0) {
+        Py_DECREF(&simple_graphs_AdjacencyMatrixType);
         Py_DECREF(m);
         return NULL;
     }
