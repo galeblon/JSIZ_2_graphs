@@ -1,13 +1,16 @@
-import simple_graphs as sg;
-g = sg.AdjacencyMatrix("I?qaeX{n?");
-g.vertices();
-g.number_of_vertices();
+import simple_graphs as sg
+g = sg.AdjacencyMatrix("DQc")
+g.edges()
 
+g = sg.AdjacencyMatrix("I?qaeX{n?")
+g.vertices()
+g.number_of_vertices()
+g.edges()
 
-g.add_vertex(1);
-g.add_vertex(2);
-g.vertices();
-g.number_of_vertices();
-g.add_vertex(40);
-g.vertices();
-g.number_of_vertices();
+g.add_vertex(1)
+g.add_vertex(2)
+g.vertices()
+g.number_of_vertices()
+g.add_vertex(40)
+g.vertices()
+g.number_of_vertices()
