@@ -17,11 +17,6 @@ static PyObject* AdjacencyMatrix_method_test2(AdjacencyMatrixObject* self, PyObj
     return PyLong_FromLong(620);
 };
 
-static PyObject* AdjacencyMatrix_method_test3(AdjacencyMatrixObject* self, PyObject* o)
-{
-    return Py_BuildValue("");
-};
-
 static PyObject* AdjacencyMatrix_number_of_vertices(AdjacencyMatrixObject* self, PyObject *Py_UNUSED(ignored))
 {
     uint64_t v_temp = self->vertices;
@@ -134,6 +129,53 @@ static PyObject* AdjacencyMatrix_edges(AdjacencyMatrixObject* self, PyObject *Py
                 PySet_Add(e_set, PyTuple_Pack(2, PyLong_FromLong(vi), PyLong_FromLong(vj)));
     return e_set;
 }
+
+static PyObject* AdjacencyMatrix_is_edge(AdjacencyMatrixObject* self, PyObject* o)
+{
+    uint64_t v1, v2;
+    if(!PyArg_ParseTuple(o, "kk", &v1, &v2))
+    {
+        PyErr_SetString(PyExc_TypeError, "Couldn't unpack argument");
+        return NULL;
+    }
+
+    uint64_t is_edge = 0;
+    is_edge = self->edges_matrix[v1%MAX_VERTICES] & ((uint64_t)1 << (v2%MAX_VERTICES));
+
+    return PyBool_FromLong(is_edge);
+};
+
+static PyObject* AdjacencyMatrix_add_edge(AdjacencyMatrixObject* self, PyObject* o)
+{
+    uint64_t v1, v2;
+    if(!PyArg_ParseTuple(o, "kk", &v1, &v2))
+    {
+        PyErr_SetString(PyExc_TypeError, "Couldn't unpack argument");
+        return NULL;
+    }
+
+    self->vertices |= ((uint64_t)1 << (v2%MAX_VERTICES));
+    self->vertices |= ((uint64_t)1 << (v1%MAX_VERTICES));
+    self->edges_matrix[v1%MAX_VERTICES] |= ((uint64_t)1 << (v2%MAX_VERTICES));
+    self->edges_matrix[v2%MAX_VERTICES] |= ((uint64_t)1 << (v1%MAX_VERTICES));
+
+    return Py_BuildValue("");
+};
+
+static PyObject* AdjacencyMatrix_delete_edge(AdjacencyMatrixObject* self, PyObject* o)
+{
+    uint64_t v1, v2;
+    if(!PyArg_ParseTuple(o, "kk", &v1, &v2))
+    {
+        PyErr_SetString(PyExc_TypeError, "Couldn't unpack argument");
+        return NULL;
+    }
+
+    self->edges_matrix[v1%MAX_VERTICES] &= ~((uint64_t)1 << (v2%MAX_VERTICES));
+    self->edges_matrix[v2%MAX_VERTICES] &= ~((uint64_t)1 << (v1%MAX_VERTICES));
+
+    return Py_BuildValue("");
+};
 // Graph methods end
 
 static PyMemberDef AdjacencyMatrix_members[] ={
@@ -150,10 +192,10 @@ static PyMethodDef AdjacencyMatrix_methods[] = {
     {"delete_vertex", (PyCFunction) AdjacencyMatrix_delete_vertex, METH_O, "Removes existing vertex from the graph."},
     {"number_of_edges", (PyCFunction) AdjacencyMatrix_number_of_edges, METH_NOARGS, "Returns the number of edges in graph."},
     {"edges", (PyCFunction) AdjacencyMatrix_edges, METH_NOARGS, "Returns the edges of the graph."},
+    {"is_edge", (PyCFunction) AdjacencyMatrix_is_edge, METH_VARARGS, "Returns whether the vertices form an edge in the graph."},
+    {"add_edge", (PyCFunction) AdjacencyMatrix_add_edge, METH_VARARGS, "Adds new edge between specified vertices in the graph."},
+    {"delete_edge", (PyCFunction) AdjacencyMatrix_delete_edge, METH_VARARGS, "Removed edge between specified vertices in the graph."},
     //TODO WIP methods
-    {"is_edge", (PyCFunction) AdjacencyMatrix_method_test2, METH_VARARGS, "Returns whether the vertices form an edge in the graph."},
-    {"add_edge", (PyCFunction) AdjacencyMatrix_method_test2, METH_VARARGS, "Adds new edge between specified vertices in the graph."},
-    {"delete_edge", (PyCFunction) AdjacencyMatrix_method_test2, METH_VARARGS, "Removed edge between specified vertices in the graph."},
     // Additional operation
     {"vertices_of_degree", (PyCFunction) AdjacencyMatrix_method_test2, METH_O, "Returns vertices of given degree."},
     {NULL} // Sentinel
@@ -161,20 +203,20 @@ static PyMethodDef AdjacencyMatrix_methods[] = {
 
 static PyObject* AdjacencyMatrix_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    AdjacencyMatrixObject* self;
-    self = (AdjacencyMatrixObject*) type->tp_alloc(type, 0);
+    AdjacencyMatrixObject *self;
+    self = (AdjacencyMatrixObject *) type->tp_alloc(type, 0);
     if(self != NULL) {
         self->vertices = 0;
         for(size_t v = 0; v<MAX_VERTICES; v++)
             self->edges_matrix[v] = 0;
     }
-    return (PyObject*) self;
+    return (PyObject *) self;
 }
 
 static int AdjacencyMatrix_init(AdjacencyMatrixObject *self, PyObject *args, PyObject *kwds)
 {
-    char* str = NULL;
-    if(!PyArg_ParseTuple(args, "s", &str))
+    char *str = "?";
+    if(!PyArg_ParseTuple(args, "|s", &str))
     {
         PyErr_SetString(PyExc_TypeError, "Couldn't unpack argument");
         return -1;
@@ -183,9 +225,8 @@ static int AdjacencyMatrix_init(AdjacencyMatrixObject *self, PyObject *args, PyO
         PyErr_SetString(PyExc_TypeError, "g6 sequence cannot be empty");
         return -1;
     }
-
     //Vertices
-    char* g6_sequence = str;
+    char *g6_sequence = str;
     uint64_t num_of_vertices = g6_sequence[0] - 63;
     while(num_of_vertices > 0)
         self->vertices |=  (uint64_t)1 << --num_of_vertices;
@@ -208,7 +249,6 @@ static int AdjacencyMatrix_init(AdjacencyMatrixObject *self, PyObject *args, PyO
             }
         }
     }
-    // TODO also fill lower triangle
     return 0;
 }
 
@@ -241,7 +281,7 @@ static PyModuleDef simple_graphs_module = {
 PyMODINIT_FUNC
 PyInit_simple_graphs(void)
 {
-    PyObject* m;
+    PyObject *m;
 
     if(PyType_Ready(&simple_graphs_AdjacencyMatrixType) < 0)
         return NULL;
@@ -251,7 +291,7 @@ PyInit_simple_graphs(void)
         return NULL;
 
     Py_INCREF(&simple_graphs_AdjacencyMatrixType);
-    if(PyModule_AddObject(m, "AdjacencyMatrix", (PyObject*)&simple_graphs_AdjacencyMatrixType) < 0) {
+    if(PyModule_AddObject(m, "AdjacencyMatrix", (PyObject *)&simple_graphs_AdjacencyMatrixType) < 0) {
         Py_DECREF(&simple_graphs_AdjacencyMatrixType);
         Py_DECREF(m);
         return NULL;
