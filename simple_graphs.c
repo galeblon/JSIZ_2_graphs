@@ -31,6 +31,7 @@ static PyObject* AdjacencyMatrix_number_of_vertices(AdjacencyMatrixObject* self,
 
 static PyObject* AdjacencyMatrix_vertices(AdjacencyMatrixObject* self, PyObject *Py_UNUSED(ignored))
 {
+    PyObject* temp;
     uint64_t v_temp = self->vertices;
     PyObject* v_set = PySet_New(NULL);
     for(size_t vi=0; vi<MAX_VERTICES; vi++) {
@@ -38,7 +39,9 @@ static PyObject* AdjacencyMatrix_vertices(AdjacencyMatrixObject* self, PyObject 
             break;
         if(v_temp&0x01)
         {
-            PySet_Add(v_set, PyLong_FromLong(vi));
+            temp = PyLong_FromLong(vi);
+            PySet_Add(v_set, temp);
+            Py_DECREF(temp);
         }
         v_temp >>= 1;
     }
@@ -58,6 +61,7 @@ static PyObject* AdjacencyMatrix_vertex_degree(AdjacencyMatrixObject* self, PyOb
 
 static PyObject* AdjacencyMatrix_vertex_neighbors(AdjacencyMatrixObject* self, PyObject* o)
 {
+    PyObject* temp;
     if(PyLong_Check(o)) {
         uint64_t e_temp = self->edges_matrix[PyLong_AsLong(o)%64];
         PyObject* n_set = PySet_New(NULL);
@@ -66,7 +70,9 @@ static PyObject* AdjacencyMatrix_vertex_neighbors(AdjacencyMatrixObject* self, P
                 break;
             if(e_temp&0x01)
             {
-                PySet_Add(n_set, PyLong_FromLong(ni));
+                temp = PyLong_FromLong(ni);
+                PySet_Add(n_set, temp);
+                Py_DECREF(temp);
             }
             e_temp >>= 1;
         }
@@ -115,13 +121,17 @@ static PyObject* AdjacencyMatrix_number_of_edges(AdjacencyMatrixObject* self, Py
 
 static PyObject* AdjacencyMatrix_edges(AdjacencyMatrixObject* self, PyObject *Py_UNUSED(ignored))
 {
+    PyObject* temp;
     PyObject* e_set = PySet_New(NULL);
     for(uint64_t vi=0; vi<MAX_VERTICES; vi++) {
         if(!self->edges_matrix[vi])
             continue;
         for(uint64_t vj=vi+1; vj<MAX_VERTICES; vj++)
-            if(self->edges_matrix[vi] & ((uint64_t)1 << vj))
-                PySet_Add(e_set, PyTuple_Pack(2, PyLong_FromLong(vi), PyLong_FromLong(vj)));
+            if(self->edges_matrix[vi] & ((uint64_t)1 << vj)) {
+                temp = PyTuple_Pack(2, PyLong_FromLong(vi), PyLong_FromLong(vj));
+                PySet_Add(e_set, temp);
+                Py_DECREF(temp);
+            }
     }
     return e_set;
 }
@@ -174,12 +184,16 @@ static PyObject* AdjacencyMatrix_delete_edge(AdjacencyMatrixObject* self, PyObje
 
 static PyObject* AdjacencyMatrix_vertices_of_degree(AdjacencyMatrixObject* self, PyObject* o)
 {
+    PyObject* temp;
     if(PyLong_Check(o)) {
         uint64_t degree = self->edges_matrix[PyLong_AsLong(o)];
         PyObject* v_set = PySet_New(NULL);
         for(size_t vi=0; vi<MAX_VERTICES; vi++) {
-            if(bitCount(self->edges_matrix[vi]) == degree)
-                PySet_Add(v_set, PyLong_FromLong(vi));
+            if(bitCount(self->edges_matrix[vi]) == degree) {
+                temp = PyLong_FromLong(vi);
+                PySet_Add(v_set, temp);
+                Py_DECREF(temp);
+            }
         }
         return v_set;
     } else {
@@ -294,6 +308,11 @@ static int AdjacencyMatrix_init(AdjacencyMatrixObject *self, PyObject *args, PyO
     return 0;
 }
 
+static void AdjacencyMatrix_dealloc(AdjacencyMatrixObject* self)
+{
+    Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
 static PyTypeObject simple_graphs_AdjacencyMatrixType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "simple_graphs.AdjacencyMatrix",
@@ -305,7 +324,8 @@ static PyTypeObject simple_graphs_AdjacencyMatrixType = {
     .tp_init = (initproc)AdjacencyMatrix_init,
     .tp_members = AdjacencyMatrix_members,
     .tp_methods = AdjacencyMatrix_methods,
-    .tp_richcompare = AdjacencyMatrix_richcompare
+    .tp_richcompare = AdjacencyMatrix_richcompare,
+    .tp_dealloc = (destructor) AdjacencyMatrix_dealloc
 };
 
 
