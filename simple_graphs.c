@@ -140,7 +140,7 @@ static PyObject* AdjacencyMatrix_edges(AdjacencyMatrixObject* self, PyObject *Py
     while(vertices_temp) {
         if(vertices_temp & 0x01) {
             uint64_t vj = vi + 1;
-            uint64_t edges = self->edges_matrix[vi];
+            uint64_t edges = self->edges_matrix[vi] >> vj;
             while(edges) {
                 if(edges & 0x01) {
                     temp = PyTuple_Pack(2, PyLong_FromLong(vi), PyLong_FromLong(vj));
@@ -251,7 +251,7 @@ static PyObject* AdjacencyMatrix_richcompare(PyObject *self, PyObject* other, in
         case Py_NE:
         if(s->vertices != o->vertices)
             return Py_True;
-        vertices_temp = s->vertices | o->vertices;
+        vertices_temp = s->vertices;
         vi = 0;
         while(vertices_temp) {
             if(s->edges_matrix[vi] != o->edges_matrix[vi])
